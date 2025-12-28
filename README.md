@@ -35,4 +35,9 @@ After the installation completes, **log out and log back in** to restart GNOME S
 ## Keyboard Shortcuts
 
 You can view the full list of keyboard shortcuts for Pop Shell and Pop Launcher here:
-[Pop!_OS Keyboard Shortcuts](https://support.system76.com/articles/pop-keyboard-shortcuts/)
+[link](https://support.system76.com/articles/pop-keyboard-shortcuts/)
+
+## Credits
+
+This script is based on the official System76 tutorial:
+[link](https://support.system76.com/articles/pop-shell/)
