@@ -132,6 +132,32 @@ install_pop_shell() {
     success "Pop Shell installed."
 }
 
+apply_schema() {
+    log "Applying Debian 13 schema..."
+
+    SCHEMA_FILE="org.gnome.shell.extensions.pop-shell.gschema.xml"
+    LOCAL_SCHEMA="$INSTALL_DIR/schemas/$SCHEMA_FILE"
+    SYSTEM_SCHEMA_DIR="/usr/share/glib-2.0/schemas"
+
+    if [ -f "$LOCAL_SCHEMA" ]; then
+        log "Copying schema to system directory..."
+        sudo cp "$LOCAL_SCHEMA" "$SYSTEM_SCHEMA_DIR/"
+        
+        log "Compiling system schemas..."
+        sudo glib-compile-schemas "$SYSTEM_SCHEMA_DIR"
+        
+        log "Compiling local schemas..."
+        glib-compile-schemas "$INSTALL_DIR/schemas"
+        
+        log "Setting launcher shortcut to Super + /"
+        gsettings set org.gnome.shell.extensions.pop-shell activate-launcher "['<Super>slash']" || true
+        
+        success "Schema fixes applied."
+    else
+        error "Schema file not found in build directory."
+    fi
+}
+
 # Configure shortcuts
 configure_shortcuts() {
     read -p "Do you want to apply Pop Shell keyboard shortcuts? (y/n) " -n 1 -r
@@ -152,6 +178,7 @@ cleanup() {
 check_dependencies
 install_pop_launcher
 install_pop_shell
+apply_schema
 configure_shortcuts
 cleanup
 
