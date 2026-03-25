@@ -27,27 +27,37 @@ success(){
 WORK_DIR="/tmp/popshell_install_work"
 INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/pop-shell@system76.com"
 
-# Dependencies
-DEPENDENCIES="git node-typescript make cargo rustc libssl-dev libglib2.0-bin gnome-shell-extension-prefs"
+# Dependencies (runtime)
+RUNTIME_DEPS="git libssl-dev libglib2.0-bin gnome-shell-extension-prefs"
 
-# Check Dependencies
-check_dependencies(){
-    log "Checking system depedencies"
+# Dependencies (build only - will be removed after)
+BUILD_DEPS="node-typescript make cargo rustc"
+
+install_build_deps(){
+    log "Installing build dependencies..."
+    sudo apt update
+    sudo apt install -y $RUNTIME_DEPS $BUILD_DEPS
     
-    MISSING_DEPS=""
-    for dep in $DEPENDENCIES; do
-        if ! dpkg -s $dep >/dev/null 2>&1; then
-            MISSING_DEPS="$MISSING_DEPS $dep"
-        fi
-    done
-
-    if [ ! -z "$MISSING_DEPS" ]; then
-        log "Installing missing dependencies: $MISSING_DEPS"
-        sudo apt update
-        sudo apt install -y $MISSING_DEPS
+    if ! command -v rustup >/dev/null; then
+        log "Installing rustup..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
     else
-        success "All dependencies are installed."
+        source "$HOME/.cargo/env"
     fi
+    
+    rustup default stable
+    
+    if ! command -v just >/dev/null; then
+        log "Installing just..."
+        cargo install just
+    fi
+}
+
+remove_build_deps(){
+    log "Removing build tools to keep system clean..."
+    sudo apt remove -y $BUILD_DEPS 2>/dev/null || true
+    sudo apt autoremove -y 2>/dev/null || true
 }
 
 # Install Pop Launcher
@@ -64,35 +74,10 @@ install_pop_launcher() {
     cd pop-launcher
     
     log "Building Pop Launcher (this may take a while)..."
-    cargo build --release -p pop-launcher-bin
+    just build-release
 
-    log "Installing Pop Launcher binaries and plugins..."
-    
-    mkdir -p ~/.local/bin
-    mkdir -p ~/.local/share/pop-launcher/plugins
-    mkdir -p ~/.local/share/pop-launcher/scripts
-
-    if [ -f "target/release/pop-launcher-bin" ]; then
-        cp target/release/pop-launcher-bin ~/.local/bin/pop-launcher
-    else
-        error "Binary target/release/pop-launcher-bin not found. listing target/release:"
-        ls -l target/release/
-        exit 1
-    fi
-    
-    # Plugins
-    PLUGINS="calc desktop_entries files find pop_shell pulse recent scripts terminal web"
-    for plugin in $PLUGINS; do
-        mkdir -p ~/.local/share/pop-launcher/plugins/$plugin
-        cp plugins/src/$plugin/*.ron ~/.local/share/pop-launcher/plugins/$plugin/
-        
-        # Create symlink with correct name (replace _ with -)
-        LINK_NAME=$(echo $plugin | sed 's/_/-/')
-        ln -sf ~/.local/bin/pop-launcher ~/.local/share/pop-launcher/plugins/$plugin/$LINK_NAME
-    done
-
-    # Scripts
-    cp -r scripts/* ~/.local/share/pop-launcher/scripts/
+    log "Installing Pop Launcher..."
+    just install
 
     success "Pop Launcher installed."
 }
@@ -108,7 +93,7 @@ install_pop_shell() {
     fi
 
     # Clone the repo
-    git clone https://github.com/pop-os/shell.git pop-shell-src
+    git clone --branch master_noble https://github.com/pop-os/shell.git pop-shell-src
     cd pop-shell-src
 
     log "Compiling Pop Shell..."
@@ -175,9 +160,10 @@ cleanup() {
 }
 
 # Main execution
-check_dependencies
+install_build_deps
 install_pop_launcher
 install_pop_shell
+remove_build_deps
 apply_schema
 configure_shortcuts
 cleanup
