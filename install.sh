@@ -159,10 +159,28 @@ cleanup() {
     rm -rf "$WORK_DIR"
 }
 
+configure_autostart() {
+    log "Configuring pop-launcher autostart..."
+    mkdir -p "$HOME/.config/autostart"
+    cat > "$HOME/.config/autostart/pop-launcher.desktop" << 'EOF'
+[Desktop Entry]
+Type=Application
+Name=Pop Launcher
+Comment=Starts the pop-launcher daemon
+Exec=bash -c "sleep 3 && pop-launcher"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3
+EOF
+    success "Autostart configured."
+}
+
 # Main execution
 install_build_deps
 install_pop_launcher
 install_pop_shell
+configure_autostart
 remove_build_deps
 apply_schema
 configure_shortcuts
