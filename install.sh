@@ -31,55 +31,18 @@ INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/pop-shell@system76.com"
 RUNTIME_DEPS="git libssl-dev libglib2.0-bin gnome-shell-extension-prefs"
 
 # Dependencies (build only - will be removed after)
-BUILD_DEPS="node-typescript make cargo rustc"
+BUILD_DEPS="node-typescript make"
 
 install_build_deps(){
     log "Installing build dependencies..."
     sudo apt update
     sudo apt install -y $RUNTIME_DEPS $BUILD_DEPS
-    
-    if ! command -v rustup >/dev/null; then
-        log "Installing rustup..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-        source "$HOME/.cargo/env"
-    else
-        source "$HOME/.cargo/env"
-    fi
-    
-    rustup default stable
-    
-    if ! command -v just >/dev/null; then
-        log "Installing just..."
-        cargo install just
-    fi
 }
 
 remove_build_deps(){
     log "Removing build tools to keep system clean..."
     sudo apt remove -y $BUILD_DEPS 2>/dev/null || true
     sudo apt autoremove -y 2>/dev/null || true
-}
-
-# Install Pop Launcher
-install_pop_launcher() {
-    log "Installing Pop Launcher..."
-    mkdir -p "$WORK_DIR"
-    cd "$WORK_DIR"
-
-    if [ -d "pop-launcher" ]; then
-        rm -rf pop-launcher
-    fi
-
-    git clone https://github.com/pop-os/launcher.git pop-launcher
-    cd pop-launcher
-    
-    log "Building Pop Launcher (this may take a while)..."
-    just build-release
-
-    log "Installing Pop Launcher..."
-    just install
-
-    success "Pop Launcher installed."
 }
 
 # Install Pop Shell
@@ -159,28 +122,9 @@ cleanup() {
     rm -rf "$WORK_DIR"
 }
 
-configure_autostart() {
-    log "Configuring pop-launcher autostart..."
-    mkdir -p "$HOME/.config/autostart"
-    cat > "$HOME/.config/autostart/pop-launcher.desktop" << 'EOF'
-[Desktop Entry]
-Type=Application
-Name=Pop Launcher
-Comment=Starts the pop-launcher daemon
-Exec=bash -c "sleep 3 && pop-launcher"
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-X-GNOME-Autostart-Delay=3
-EOF
-    success "Autostart configured."
-}
-
 # Main execution
 install_build_deps
-install_pop_launcher
 install_pop_shell
-configure_autostart
 remove_build_deps
 apply_schema
 configure_shortcuts
